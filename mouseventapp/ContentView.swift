@@ -7,71 +7,69 @@
 
 import SwiftUI
 import Cocoa
-var timer: Timer?
-var combinationKeys = Set<UInt16>()
+
 struct ContentView: View {
     
-    func moveMouse(to point: CGPoint) {
-        let moveEvent = CGEvent(
-            mouseEventSource: nil,
-            mouseType: .mouseMoved,
-            mouseCursorPosition: point,
-            mouseButton: .left
-        )
-        moveEvent?.post(tap: .cghidEventTap)
-    }
-    
-    func timerInitial() {
-        timer =  Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { timer in
-            moveMouse(to: CGPoint(x: Int.random(in: 1...1024), y: Int.random(in: 1...720)))
-        }
-    }
-    
-    func listenForEvents() {
-        NSApplication.shared.hide(nil)
-        NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { event in
-            keyDown(event: event)
-        }
-        
-        NSEvent.addGlobalMonitorForEvents(matching: .keyUp) { event in
-            keyUp(event: event)
-        }
-    }
-    
-    func keyDown(event: NSEvent) {
-        combinationKeys.insert(event.keyCode)
-        checkCombination()
-    }
-    
-    func keyUp(event: NSEvent) {
-        combinationKeys.remove(event.keyCode)
-    }
-    
-    func checkCombination() {
-        let sKeyCode: UInt16 = 1
-        let pKeyCode: UInt16 = 35
-        let tKeyCode: UInt16 = 17
-        let backspaceKeyCode: UInt16 = 51
-        if combinationKeys.contains(sKeyCode) && combinationKeys.contains(tKeyCode) && combinationKeys.contains(backspaceKeyCode) {
-            timerInitial()
-        }else if combinationKeys.contains(sKeyCode) && combinationKeys.contains(pKeyCode) && combinationKeys.contains(backspaceKeyCode) {
-            timer?.invalidate()
-            timer = nil
-            combinationKeys = []
-        }
-    }
-    
+    @State private var isMoving = false
+    @State private var timer: Timer?
+
     var body: some View {
         let _ = NSApplication.shared.setActivationPolicy(.prohibited)
         VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+            Text("Start Mouse Move")
+                .font(.largeTitle)
+                .padding()
+
+            Button(action: toggleMovement) {
+                Text(isMoving ? "Stop" : "Start")
+                    .font(.title)
+                    .padding()
+                    .background(isMoving ? Color.red : Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+            }
+            .padding()
         }
-        .padding()
-        .onAppear{
-            listenForEvents()
+        .onAppear(perform: setupKeyBindings)
+    }
+
+    func toggleMovement() {
+        if isMoving {
+            stopMovement()
+        } else {
+            startMovement()
+        }
+    }
+
+    func startMovement() {
+        isMoving = true
+        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+            moveMouse()
+        }
+    }
+
+    func stopMovement() {
+        isMoving = false
+        timer?.invalidate()
+        timer = nil
+    }
+
+    func moveMouse() {
+        let deltaX = Double.random(in: -10...10)
+        let deltaY = Double.random(in: -10...10)
+
+        let currentLocation = NSEvent.mouseLocation
+        let newLocation = CGPoint(x: currentLocation.x + deltaX, y: currentLocation.y + deltaY)
+
+        let mouseEvent = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: newLocation, mouseButton: .left)!
+        mouseEvent.post(tap: .cghidEventTap)
+    }
+
+    func setupKeyBindings() {
+        NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { event in
+            if event.modifierFlags.contains(.command) && event.charactersIgnoringModifiers == "ç" {
+                toggleMovement()
+            }
         }
     }
 }
